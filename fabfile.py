@@ -2,6 +2,9 @@ from fabric.api import *
 from fabric.contrib.console import confirm
 import fabric.contrib.files
 
+#
+# Update this section, including prod(), with your project-specific data
+# 
 git_dir = "$HOME/webapps/git/repos"
 # replace username in the next path. Can't use $HOME from python.
 remote_dir = '/home/username/webapps/newproj_django'
@@ -13,6 +16,8 @@ install_list = ['django-cms', 'django-reversion']
 
 def prod():
     env.hosts = ['user@user.webfactional.com']
+
+#
 
 def migrate(app=''):
     """
@@ -43,6 +48,34 @@ def deploy(app_to_migrate=""):
         run(python_add_str + "python manage.py createinitialrevisions") # only if using reversion
         run(python_add_str + "python manage.py collectstatic --noinput")
         run("../apache2/bin/restart")
+
+#
+# Database methods
+#
+def mysqldump():
+    """
+    Saves a copy of the database into the tmp directory.
+    Modify this code directly if needed, as it hardwires the username, db name and filename.
+    Usage:
+        fab prod mysqldump
+    (you will be prompted for the db user's password)
+    """
+    run("mysqldump -u database_user database_name -p > ~/tmp/exported_db.sql")
+
+def mysql_import():
+    """
+    Imports a database from the tmp directory.
+    Use very carefully! (or just to remind yourself how to import mysql data)
+    Modify this code directly if needed, as it hardwires the username, db name and filename.
+    Usage:
+        fab prod mysql_import
+    (you will be prompted for the db user's password)
+    """
+    run("mysql -u database_user -p -D database_name < ~/tmp/exported_db.sql")
+
+#def scp(filepath):
+#    "This is only here to remind me how to use scp"
+#    run("scp filename username@webNNN.webfaction.com:path")
 
 #
 #  Methods for initial installation
@@ -127,6 +160,7 @@ def add_dirs_to_static(static_webapp_name):
         with cd(static_dir):
             run("mkdir static && mkdir media")
             run("rm index.html")
+            run("touch index.html")
         with cd(code_dir):
             run("mkdir %s/static" % project_name)
 
@@ -189,6 +223,8 @@ def initialise(static_webapp_name="myproj_static", git_repo_name="myproj"):
       * Initialises the database using South
       * Runs the Django-CMS cms check command
       * Deploys the app as normal (the git pull is redundant but harmless)
+
+    Just comment out any pieces you don't need in your situation.
     """
     install_pip()
     create_prod_git_repo(git_repo_name)
