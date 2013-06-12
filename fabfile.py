@@ -162,6 +162,15 @@ def create_prod_git_repo(git_repo_name):
         run("git init --bare %s.git && cd %s.git && git config http.receivepack true" %
               (git_repo_name,git_repo_name))
 
+def add_git_user(email=None, user_full_name=None):
+    """
+    """
+    with cd(code_dir):
+        if email:
+            run('git config --global user.email "%s"' % email)
+        if user_full_name:
+            run('git config --global user.name "%s"' % user_full_name)
+
 def add_prod_repo_as_origin_and_push(git_repo_name):
     """
     Adds the git repo on the server as the local .git repo's origin, and pushes master to it.
@@ -253,7 +262,10 @@ def initialise_database():
         run(python_add_str + "python manage.py syncdb --all")
         run(python_add_str + "python manage.py migrate --fake")
 
-def initialise(static_webapp_name="myproj_static", git_repo_name="myproj"):
+def initialise(static_webapp_name="myproj_static", 
+               git_repo_name="myproj",
+               git_user_email=None,
+               git_user_name=None):
     """
     In brief:
     Creates a git repo on the server, and fills in the django and static webapps with it.
@@ -269,6 +281,7 @@ def initialise(static_webapp_name="myproj_static", git_repo_name="myproj"):
     In detail:
       * Installs pip itself on the server, if needed
       * Creates a new git repo on the server (do not include the .git ending in git_repo_name)
+      * Sets the git user name and email address
       * Add it as the origin to the local git repo
       * Pushes the local code to the new repo
       * Clones it into the new webapp, deleting the default myproject project
@@ -289,6 +302,7 @@ def initialise(static_webapp_name="myproj_static", git_repo_name="myproj"):
     """
     install_pip()
     create_prod_git_repo(git_repo_name)
+    add_git_user(git_user_email, git_user_name)
     add_prod_repo_as_origin_and_push(git_repo_name)
     clone_into_project(git_repo_name)
     add_dirs_to_static(static_webapp_name)
