@@ -260,7 +260,7 @@ def initialise(static_webapp_name="myproj_static", git_repo_name="myproj"):
     Initialises the database, and deploys the app.
 
     Usage (in the local project directory, e.g. ~/Python/Projects/project) :
-        fab prod install
+        fab prod initialise
 
     Requires a git webapp, the database, the django webapp, the static webapp
     to have been created on the server already.
