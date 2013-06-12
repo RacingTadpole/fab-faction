@@ -12,10 +12,12 @@ project_name = 'newproj'
 code_dir = remote_dir + '/' + project_name
 python_dir = remote_dir + '/lib/python2.7'
 python_add_str = 'export PYTHONPATH="' + python_dir + ':$PYTHONPATH"; '
+host_name = "user.webfactional.com"
+user = "user"
 install_list = ['django-cms', 'django-reversion']
 
 def prod():
-    env.hosts = ['user@user.webfactional.com']
+    env.hosts = ['%s@%s' % (user, host_name)]
 
 #
 
@@ -80,6 +82,62 @@ def mysql_import():
 #
 #  Methods for initial installation
 #
+def update_ssh_shortcut(output_keyfile, quickname=None):
+    """
+    Set up an ssh shortcut.
+    Called by setup_ssh_keys.
+    You can call it separately if desired.
+
+    Usage:
+       fab update_quick_ssh:keyfilename,quickname
+    """
+    if quickname:
+        with settings(warn_only=True):
+            local("touch $HOME/.ssh/config")
+        local(r"echo '' >> $HOME/.ssh/config")
+        local(r"echo 'Host %s' >> $HOME/.ssh/config" % quickname)
+        local(r"echo '' >> $HOME/.ssh/config")
+        local(r"echo 'Hostname %s' >> $HOME/.ssh/config" % host_name)
+        local(r"echo 'User %s' >> $HOME/.ssh/config" % user)
+        local(r"echo 'IdentityFile ~/.ssh/%s' >> $HOME/.ssh/config" % output_keyfile)
+        local(r"echo 'ServerAliveCountMax 3' >> $HOME/.ssh/config")
+        local(r"echo 'ServerAliveInterval 10' >> $HOME/.ssh/config")
+
+def setup_ssh_keys(output_keyfile="id_rsa", ssh_type="rsa", quickname=None):
+    """
+    Generate a new SSH key and deliver it to the server.
+    If quickname is provided, also set up an ssh shortcut.
+    Use this to enable password-less access to webfaction.
+    Based on http://docs.webfaction.com/user-guide/access.html
+    and
+    http://racingtadpole.com/blog/django-cms-with-webfaction
+
+    Usage:
+       fab prod setup_ssh_keys
+       fab prod setup_ssh_keys:output_keyfilename
+       fab prod setup_ssh_keys:output_keyfilename,rsa|dsa
+       fab prod setup_ssh_keys:output_keyfilename,rsa|dsa,quickname
+
+    output_keyfilename defaults to "id_rsa".
+    ssh_type defaults to rsa.
+    If you include quickname, you can thereafter type just: ssh quickname 
+    """
+    with settings(warn_only=True):
+        local("mkdir -p $HOME/.ssh")
+    with cd("$HOME/.ssh"):
+        local("ssh-keygen -t %s -f %s" % (ssh_type, output_keyfile))
+        for host in env.hosts:
+            local("scp %s.pub %s:temp_id_key.pub" % (output_keyfile, host))
+    with settings(warn_only=True):
+        run("mkdir -p $HOME/.ssh")
+    run("cat $HOME/temp_id_key.pub >> ~/.ssh/authorized_keys")
+    run("rm $HOME/temp_id_key.pub")
+    run("chmod 600 $HOME/.ssh/authorized_keys")
+    run("chmod 700 $HOME/.ssh")
+    run("chmod go-w $HOME")
+    if quickname:
+        update_ssh_shortcut(output_keyfile, quickname)
+
 def install_pip():
     """
     Installs pip itself if needed.
@@ -225,6 +283,9 @@ def initialise(static_webapp_name="myproj_static", git_repo_name="myproj"):
       * Deploys the app as normal (the git pull is redundant but harmless)
 
     Just comment out any pieces you don't need in your situation.
+
+    If you also want to set up a new ssh key and shortcut, you can also call:
+        fab prod setup_ssh_keys:output_keyfilename,rsa|dsa,quickname
     """
     install_pip()
     create_prod_git_repo(git_repo_name)
