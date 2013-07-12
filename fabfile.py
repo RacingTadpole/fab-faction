@@ -34,6 +34,17 @@ def migrate(app=''):
         local("python manage.py migrate %s" % app)
         local("python manage.py createinitialrevisions")
 
+def mysqldump():
+    """
+    Saves a copy of the database into the tmp directory.
+    Modify this code directly if needed, as it hardwires the username, db name and filename.
+    Usage:
+        fab prod mysqldump
+    (you will be prompted for the db user's password unless you add the pwd directly
+    after the -p, with no space or quotes)
+    """
+    run("mysqldump -u database_user database_name -p > ~/tmp/exported_db.sql")
+
 def deploy(app_to_migrate=""):
     """
     To save some output text and time,
@@ -44,6 +55,7 @@ def deploy(app_to_migrate=""):
         fab prod deploy
         fab prod deploy:myapp
     """
+    mysqldump() # backup database before making changes
     with cd(code_dir):
         run("git pull")
         run(python_add_str + "python manage.py migrate %s" % app_to_migrate)
@@ -52,18 +64,8 @@ def deploy(app_to_migrate=""):
         run("../apache2/bin/restart")
 
 #
-# Database methods
+# Extra command to import the database backup if necessary
 #
-def mysqldump():
-    """
-    Saves a copy of the database into the tmp directory.
-    Modify this code directly if needed, as it hardwires the username, db name and filename.
-    Usage:
-        fab prod mysqldump
-    (you will be prompted for the db user's password)
-    """
-    run("mysqldump -u database_user database_name -p > ~/tmp/exported_db.sql")
-
 def mysql_import():
     """
     Imports a database from the tmp directory.
@@ -73,6 +75,9 @@ def mysql_import():
         fab prod mysql_import
     (you will be prompted for the db user's password)
     """
+    # first make another copy of the db
+    run("mysqldump -u database_user database_name -p > ~/tmp/exported_db_temp.sql")
+    # then import from the backup
     run("mysql -u database_user -p -D database_name < ~/tmp/exported_db.sql")
 
 #def scp(filepath):
